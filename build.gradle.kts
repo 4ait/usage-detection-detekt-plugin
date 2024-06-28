@@ -90,7 +90,7 @@ jreleaser {
   release {
     github {
       overwrite.set(true)
-      tagName.set("{{projectVersion}}")
+      tagName.set("v$version")
     }
   }
   deploy {
