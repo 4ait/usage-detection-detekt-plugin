@@ -37,7 +37,6 @@ dependencies {
 publishing {
   publications {
     create<MavenPublication>("mavenJava") {
-      group = "ru.code4a"
       artifactId = "usage-detection-detekt-plugin"
 
       from(components["java"])
