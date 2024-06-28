@@ -12,7 +12,7 @@ plugins {
 val detektVersion: String by project
 
 group = "ru.code4a"
-version = "0.1.0"
+version = "0.1.1"
 
 repositories {
   mavenCentral()
