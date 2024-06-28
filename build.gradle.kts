@@ -12,7 +12,7 @@ plugins {
 val detektVersion: String by project
 
 group = "ru.code4a"
-version = "0.1.1"
+version = file("version").readText().trim()
 
 repositories {
   mavenCentral()
@@ -95,11 +95,11 @@ jreleaser {
   deploy {
     maven {
       mavenCentral {
-
         create("maven-central") {
           active.set(Active.ALWAYS)
           url.set("https://central.sonatype.com/api/v1/publisher")
           stagingRepositories.add("build/staging-deploy")
+          maxRetries.set("300")
         }
       }
     }
