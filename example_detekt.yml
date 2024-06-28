@@ -1,0 +1,220 @@
+foura_usage_detection:
+  active: true
+  ValidateAllowDeepInvokesDetektRule:
+    active: true
+    # language=Yaml
+    configYaml: |
+      rootRules:
+        - message: Detected database mutation operation inside read transaction
+          visitFilter:
+            rootsOnly:
+              is:
+                methodsWithAnnotations:
+                  - ru.foura.erpii.graphql.annotations.TransactionalQuery
+                  - ru.foura.utils.database.annotations.TransactionalReadOnly
+                classesWithAnnotations:
+                  - ru.foura.erpii.graphql.annotations.GraphqlLazyDomainObject
+            nestedOnly:
+              isNot:
+                methodsWithParametrizedAnnotations:
+                  - annotation: ru.foura.utils.database.annotations.TransactionalWrite
+                    parameters:
+                      - name: type
+                        value: (ru/foura/utils/database/annotations/TransactionalWrite.Type, REQUIRES_NEW)
+                  - annotation: ru.foura.utils.database.annotations.TransactionalReadOnly
+                    parameters:
+                      - name: type
+                        value: (ru/foura/utils/database/annotations/TransactionalReadOnly.Type, REQUIRES_NEW)
+          notAllowedInvokes:
+            classesMethods:
+              - name: jakarta.persistence.Query
+                methods:
+                  - executeUpdate
+              - name: jakarta.persistence.TypedQuery
+                methods:
+                  - executeUpdate
+              - name: jakarta.persistence.EntityManager
+                methods:
+                  - persist
+                  - flush
+              - name: org.hibernate.Session
+                methods:
+                  - persist
+                  - flush
+            methodsWithAnnotations:
+              - ru.foura.utils.database.annotations.TransactionalWrite
+              - ru.foura.erpii.graphql.annotations.TransactionalMutation
+              - ru.foura.utils.annotations.DatabaseWriteOperation
+            classesMutateInvokesWithAnnotations:
+              - jakarta.persistence.Entity
+        - message: Detected database operation without transaction
+          visitFilter:
+            rootsOnly:
+              isNot:
+                packages:
+                  - ru.foura.erpii.domain.entity
+                  - ru.foura.utils.database
+                methodsWithAnnotations:
+                  - ru.foura.utils.annotations.DatabaseReadOperation
+                  - ru.foura.utils.annotations.DatabaseWriteOperation
+                classesWithAnnotations:
+                  - jakarta.transaction.TransactionScoped
+                topLevelFunction: true
+                classObjectFunction: true
+            rootsAndNested:
+              isNot:
+                methodsWithAnnotations:
+                  - ru.foura.utils.database.annotations.TransactionalWrite
+                  - ru.foura.utils.database.annotations.TransactionalReadOnly
+                  - ru.foura.erpii.graphql.annotations.TransactionalQuery
+                  - ru.foura.erpii.graphql.annotations.TransactionalMutation
+                classesWithAnnotations:
+                  - ru.foura.erpii.graphql.annotations.GraphqlLazyDomainObject
+                  - ru.foura.utils.database.annotations.TransactionalWrite
+                  - ru.foura.utils.database.annotations.TransactionalReadOnly
+                  - ru.foura.erpii.graphql.annotations.TransactionalQuery
+                  - ru.foura.erpii.graphql.annotations.TransactionalMutation
+          notAllowedInvokes:
+            classesMethods:
+              - name: jakarta.persistence.TypedQuery
+                methods:
+                  - getKeyedResultList
+                  - getResultList
+                  - getSingleResult
+                  - executeUpdate
+              - name: jakarta.persistence.Query
+                methods:
+                  - getKeyedResultList
+                  - getResultList
+                  - getSingleResult
+                  - executeUpdate
+              - name: org.hibernate.query.SelectionQuery
+                methods:
+                  - getKeyedResultList
+                  - getSingleResult
+                  - getResultList
+                  - executeUpdate
+              - name: jakarta.persistence.EntityManager
+                methods:
+                  - find
+                  - getReference
+            classesWithAnnotations:
+              - jakarta.transaction.TransactionScoped
+              - jakarta.persistence.Entity
+            methodsWithAnnotations:
+              - ru.foura.utils.annotations.DatabaseWriteOperation
+              - ru.foura.utils.annotations.DatabaseReadOperation
+        - message: Detected native database operation without annotation ru.foura.utils.annotations.UsedDatabaseNativeUpdate
+          visitFilter:
+            rootsOnly:
+              is:
+                methodsWithAnnotations:
+                  - ru.foura.utils.database.annotations.TransactionalWrite
+                  - ru.foura.utils.database.annotations.TransactionalReadOnly
+                  - ru.foura.erpii.graphql.annotations.TransactionalQuery
+                  - ru.foura.erpii.graphql.annotations.TransactionalMutation
+                classesWithAnnotations:
+                  - ru.foura.erpii.graphql.annotations.GraphqlLazyDomainObject
+                  - ru.foura.utils.database.annotations.TransactionalWrite
+                  - ru.foura.utils.database.annotations.TransactionalReadOnly
+                  - ru.foura.erpii.graphql.annotations.TransactionalQuery
+                  - ru.foura.erpii.graphql.annotations.TransactionalMutation
+              isNot:
+                methodsWithAnnotations:
+                  - ru.foura.utils.annotations.UsedDatabaseNativeUpdate
+                classesWithAnnotations:
+                  - ru.foura.utils.annotations.UsedDatabaseNativeUpdate
+            nestedOnly:
+              isNot:
+                methodsWithParametrizedAnnotations:
+                  - annotation: ru.foura.utils.database.annotations.TransactionalWrite
+                    parameters:
+                      - name: type
+                        value: (ru/foura/utils/database/annotations/TransactionalWrite.Type, REQUIRES_NEW)
+                  - annotation: ru.foura.utils.database.annotations.TransactionalReadOnly
+                    parameters:
+                      - name: type
+                        value: (ru/foura/utils/database/annotations/TransactionalReadOnly.Type, REQUIRES_NEW)
+            rootsAndNested:
+              isNot:
+                packages:
+                  - ru.foura.utils.database
+          notAllowedInvokes:
+            methodsWithAnnotations:
+              - ru.foura.utils.annotations.UsedDatabaseNativeUpdate
+            classesWithAnnotations:
+              - ru.foura.utils.annotations.UsedDatabaseNativeUpdate
+            classesMethods:
+              - name: jakarta.persistence.TypedQuery
+                methods:
+                  - executeUpdate
+              - name: jakarta.persistence.Query
+                methods:
+                  - executeUpdate
+              - name: org.hibernate.query.SelectionQuery
+                methods:
+                  - executeUpdate
+        - message: Detected usage entity inside UsedDatabaseNativeUpdate transaction
+          visitFilter:
+            rootsOnly:
+              is:
+                methodsWithAnnotations:
+                  - ru.foura.utils.annotations.UsedDatabaseNativeUpdate
+                classesWithAnnotations:
+                  - ru.foura.utils.annotations.UsedDatabaseNativeUpdate
+            nestedOnly:
+              isNot:
+                methodsWithParametrizedAnnotations:
+                  - annotation: ru.foura.utils.database.annotations.TransactionalWrite
+                    parameters:
+                      - name: type
+                        value: (ru/foura/utils/database/annotations/TransactionalWrite.Type, REQUIRES_NEW)
+                  - annotation: ru.foura.utils.database.annotations.TransactionalReadOnly
+                    parameters:
+                      - name: type
+                        value: (ru/foura/utils/database/annotations/TransactionalReadOnly.Type, REQUIRES_NEW)
+          notAllowedInvokes:
+            classesWithAnnotations:
+              - jakarta.persistence.Entity
+            packages:
+              - ru.foura.erpii.domain.entity
+            classesMethods:
+              - name: jakarta.persistence.EntityManager
+                methods:
+                  - find
+                  - getReference
+                  - persist
+  ValidateAllowUsagesFunctionsDetektRule:
+    active: true
+    # language=Yaml
+    configYaml: |
+      invokes:
+        - classes:
+            - name: jakarta.persistence.EntityManager
+              methods:
+                - persist
+          allowedIn:
+            classes:
+              - ru.foura.erpii.domain.utils.DomainService
+        - classes:
+            - name: jakarta.persistence.EntityManager
+              methods:
+                - find
+                - getReference
+                - createQuery
+          allowedIn:
+            packages:
+              - ru.foura.utils.jakarta.persistence
+            classes:
+              - ru.foura.erpii.graphql.services.AutoMapGraphqlInputToObjectAndEntityService
+              - ru.foura.erpii.graphql.services.automap.AutoMapInputEntityGetterByReference
+        - classes:
+            - name: io.quarkus.narayana.jta.QuarkusTransaction
+          allowedIn:
+            packages:
+              - ru.foura.utils.database
+      allowedUsageOnClassAnnotation: ru.foura.utils.annotations.AllowedUsageOnlyInClass
+      allowedUsageOnClassesAnnotation: ru.foura.utils.annotations.AllowedUsageOnlyInClasses
+      allowedUsageOnlyInPackageAnnotation: ru.foura.utils.annotations.AllowedUsageOnlyInPackage
+      allowedUsageOnlyInMethodAnnotation: ru.foura.utils.annotations.AllowedUsageOnlyInMethod
+      allowedUsageOnlyInMethodsAnnotation: ru.foura.utils.annotations.AllowedUsageOnlyInMethods
