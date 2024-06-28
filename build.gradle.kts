@@ -6,7 +6,6 @@ plugins {
 
   `java-library`
   `maven-publish`
-  signing
   id("org.jreleaser") version "1.12.0"
 }
 
@@ -88,14 +87,19 @@ jreleaser {
     active.set(Active.ALWAYS)
     armored.set(true)
   }
+  release {
+    github {
+      overwrite.set(true)
+      tagName.set("{{projectVersion}}")
+    }
+  }
   deploy {
     maven {
-      nexus2 {
+      mavenCentral {
+
         create("maven-central") {
           active.set(Active.ALWAYS)
-          url.set("https://s01.oss.sonatype.org/service/local")
-          closeRepository.set(true)
-          releaseRepository.set(true)
+          url.set("https://central.sonatype.com/api/v1/publisher")
           stagingRepositories.add("build/staging-deploy")
         }
       }
