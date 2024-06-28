@@ -99,7 +99,7 @@ jreleaser {
           active.set(Active.ALWAYS)
           url.set("https://central.sonatype.com/api/v1/publisher")
           stagingRepositories.add("build/staging-deploy")
-          retryDelay.set(300)
+          retryDelay.set(30)
         }
       }
     }
