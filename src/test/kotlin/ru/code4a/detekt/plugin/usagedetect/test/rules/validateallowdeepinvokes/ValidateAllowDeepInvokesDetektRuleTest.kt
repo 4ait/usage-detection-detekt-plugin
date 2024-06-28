@@ -6,8 +6,8 @@ import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import ru.foura.detekt.plugin.usagedetect.rules.ValidateAllowDeepInvokesDetektRule
-import ru.foura.detekt.plugin.usagedetect.test.extenstions.detekt.lintAllWithContextAndPrint
+import ru.code4a.detekt.plugin.usagedetect.rules.ValidateAllowDeepInvokesDetektRule
+import ru.code4a.detekt.plugin.usagedetect.test.extenstions.detekt.lintAllWithContextAndPrint
 
 @KotlinCoreEnvironmentTest
 class ValidateAllowDeepInvokesDetektRuleTest(
