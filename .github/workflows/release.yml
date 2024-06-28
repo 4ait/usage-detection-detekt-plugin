@@ -17,6 +17,10 @@ jobs:
           distribution: 'adopt'
       - name: Run chmod to make gradlew executable
         run: chmod +x ./gradlew
+      - name: Run test
+        run: ./gradlew test
+      - name: Run clean
+        run: ./gradlew clean
       - name: Set version
         run: version=$(git describe --tags --abbrev=0) && prefix=v && echo "${version#$prefix}" > version
       - name: Publish package to local staging directory
