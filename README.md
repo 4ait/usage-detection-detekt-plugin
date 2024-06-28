@@ -47,7 +47,7 @@ Add the plugin to your `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    detektPlugins("ru.foura:usage-detection-detekt-plugin:<version>")
+    detektPlugins("ru.code4a:usage-detection-detekt-plugin:<version>")
 }
 ```
 
