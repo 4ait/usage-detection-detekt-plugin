@@ -53,19 +53,16 @@ publishing {
         name = "Usage Detection Detekt Plugin Extension"
         description =
           "The Usage Detection Detekt Plugin is a powerful tool for ensuring code quality and adherence to best practices by detecting and restricting the usage of functions within other functions based on configurable rules and annotations."
-        properties = mapOf()
         licenses {
           license {
             name = "The Apache License, Version 2.0"
             url = "http://www.apache.org/licenses/LICENSE-2.0.txt"
           }
         }
-        developers {
-        }
         scm {
-          connection = "scm:git:git://example.com/my-library.git"
-          developerConnection = "scm:git:ssh://example.com/my-library.git"
-          url = "http://example.com/my-library/"
+          connection = "scm:git:git://github.com:4ait/usage-detection-detekt-plugin.git"
+          developerConnection = "scm:git:ssh://github.com:4ait/usage-detection-detekt-plugin.git"
+          url = "https://github.com/4ait/usage-detection-detekt-plugin"
         }
       }
     }
