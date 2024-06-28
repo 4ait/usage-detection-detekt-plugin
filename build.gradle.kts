@@ -1,11 +1,13 @@
+import org.jreleaser.model.Active
+
 plugins {
+  kotlin("jvm") version "1.9.23"
+  kotlin("plugin.serialization") version "1.9.23"
+
   `java-library`
   `maven-publish`
   signing
-  id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
-
-  kotlin("jvm") version "1.9.23"
-  kotlin("plugin.serialization") version "1.9.23"
+  id("org.jreleaser") version "1.12.0"
 }
 
 val detektVersion: String by project
@@ -33,18 +35,10 @@ dependencies {
   testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
 }
 
-nexusPublishing {
-  repositories {
-    sonatype {
-      nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
-      snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
-    }
-  }
-}
-
 publishing {
   publications {
     create<MavenPublication>("mavenJava") {
+      group = "ru.code4a"
       artifactId = "usage-detection-detekt-plugin"
 
       from(components["java"])
@@ -53,10 +47,19 @@ publishing {
         name = "Usage Detection Detekt Plugin Extension"
         description =
           "The Usage Detection Detekt Plugin is a powerful tool for ensuring code quality and adherence to best practices by detecting and restricting the usage of functions within other functions based on configurable rules and annotations."
+        url = "https://github.com/4ait/usage-detection-detekt-plugin"
+        inceptionYear = "2024"
         licenses {
           license {
             name = "The Apache License, Version 2.0"
-            url = "http://www.apache.org/licenses/LICENSE-2.0.txt"
+            url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+          }
+        }
+        developers {
+          developer {
+            id = "tikara"
+            name = "Evgeniy Simonenko"
+            email = "tiikara93@gmail.com"
           }
         }
         scm {
@@ -67,10 +70,37 @@ publishing {
       }
     }
   }
+  repositories {
+    maven {
+      url =
+        layout.buildDirectory
+          .dir("staging-deploy")
+          .get()
+          .asFile
+          .toURI()
+    }
+  }
 }
 
-signing {
-  sign(publishing.publications["mavenJava"])
+jreleaser {
+  gitRootSearch.set(true)
+  signing {
+    active.set(Active.ALWAYS)
+    armored.set(true)
+  }
+  deploy {
+    maven {
+      nexus2 {
+        create("maven-central") {
+          active.set(Active.ALWAYS)
+          url.set("https://s01.oss.sonatype.org/service/local")
+          closeRepository.set(true)
+          releaseRepository.set(true)
+          stagingRepositories.add("build/staging-deploy")
+        }
+      }
+    }
+  }
 }
 
 tasks.test {
