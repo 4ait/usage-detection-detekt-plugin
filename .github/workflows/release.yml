@@ -2,7 +2,7 @@ name: Publish package to the Maven Central Repository
 on:
   push:
     tags:
-      - build-v*
+      - v*
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -22,7 +22,7 @@ jobs:
       - name: Run clean
         run: ./gradlew clean
       - name: Set version
-        run: version=$(git describe --tags --abbrev=0) && prefix=build-v && echo "${version#$prefix}" > version
+        run: version=$(git describe --tags --abbrev=0) && prefix=v && echo "${version#$prefix}" > version
       - name: Publish package to local staging directory
         run: ./gradlew publish
       - name: Publish package to maven central

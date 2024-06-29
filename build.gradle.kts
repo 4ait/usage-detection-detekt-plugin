@@ -92,6 +92,7 @@ jreleaser {
   release {
     github {
       overwrite.set(true)
+      branch.set("master")
     }
   }
   deploy {
