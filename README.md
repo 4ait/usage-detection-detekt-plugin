@@ -66,3 +66,11 @@ The plugin can also use annotations to control function usage. The following ann
 * **AllowedUsageOnlyInPackage**: Restricts the usage of functions to a specific package.
 * **AllowedUsageOnlyInMethod**: Restricts the usage of functions to a specific method.
 * **AllowedUsageOnlyInMethods**: Restricts the usage of functions to a specific list of methods.
+
+# Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+# License
+
+Apache 2.0

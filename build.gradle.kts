@@ -80,7 +80,13 @@ publishing {
   }
 }
 
+val projVersion = version.toString()
+
 jreleaser {
+  project {
+    copyright.set("Company 4A")
+    version.set(projVersion)
+  }
   gitRootSearch.set(true)
   signing {
     active.set(Active.ALWAYS)
@@ -90,6 +96,13 @@ jreleaser {
     github {
       overwrite.set(true)
       tagName.set("v$version")
+      changelog {
+        formatted.set(Active.ALWAYS)
+        preset.set("conventional-commits")
+        contributors {
+          format.set("- {{contributorName}}{{#contributorUsernameAsLink}} ({{.}}){{/contributorUsernameAsLink}}")
+        }
+      }
     }
   }
   deploy {
