@@ -93,13 +93,6 @@ jreleaser {
     github {
       overwrite.set(true)
       tagName.set("v$version")
-      changelog {
-        formatted.set(Active.ALWAYS)
-        preset.set("conventional-commits")
-        contributors {
-          format.set("- {{contributorName}}{{#contributorUsernameAsLink}} ({{.}}){{/contributorUsernameAsLink}}")
-        }
-      }
     }
   }
   deploy {
