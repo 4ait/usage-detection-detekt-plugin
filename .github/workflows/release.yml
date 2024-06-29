@@ -22,7 +22,7 @@ jobs:
       - name: Set version
         run: version=$(git describe --tags --abbrev=0) && prefix=v && echo "${version#$prefix}" > version
       - name: Publish package to local staging directory
-        run: ./gradlew publish
+        run: ./gradlew publish --stacktrace
       - name: Publish package to maven central
         env:
           JRELEASER_MAVENCENTRAL_USERNAME: ${{ secrets.MAVENCENTRAL_USERNAME }}

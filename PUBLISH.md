@@ -1,7 +1,3 @@
 # Publish
 
-```shell
-gradlew clean
-gradlew publish
-gradlew jreleaserFullRelease
-```
+Push new version as git tag like 'v1.3.5'

@@ -80,12 +80,9 @@ publishing {
   }
 }
 
-val projVersion = version.toString()
-
 jreleaser {
   project {
     copyright.set("Company 4A")
-    version.set(projVersion)
   }
   gitRootSearch.set(true)
   signing {
