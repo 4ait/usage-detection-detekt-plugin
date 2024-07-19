@@ -33,7 +33,8 @@ data class FilterConfig(
   val classesMutateInvokesWithAnnotations: List<String> = emptyList(),
   val topLevelFunction: Boolean? = null,
   val classObjectFunction: Boolean? = null,
-  val classWithoutAnnotations: Boolean? = null
+  val classWithoutAnnotations: Boolean? = null,
+  val classAndMethodWithoutAnnotations: Boolean? = null
 ) {
   sealed interface PassResult {
     class Passed(
@@ -72,7 +73,8 @@ fun FilterConfig.merge(second: FilterConfig): FilterConfig =
     classesMutateInvokesWithAnnotations = this.classesMutateInvokesWithAnnotations + second.classesMutateInvokesWithAnnotations,
     topLevelFunction = this.topLevelFunction == true || second.topLevelFunction == true,
     classObjectFunction = this.classObjectFunction == true || second.classObjectFunction == true,
-    classWithoutAnnotations = this.classWithoutAnnotations == true || second.classWithoutAnnotations == true
+    classWithoutAnnotations = this.classWithoutAnnotations == true || second.classWithoutAnnotations == true,
+    classAndMethodWithoutAnnotations = this.classAndMethodWithoutAnnotations == true || second.classAndMethodWithoutAnnotations == true
   )
 
 fun tryMergeConfigs(
@@ -195,7 +197,8 @@ fun FilterConfig.tryPerformPass(
               for (containingClassAnnotation in classAnnotations) {
                 for (allowedClassWithAnnotationConfig in classesMutateInvokesWithAnnotations) {
                   if (containingClassAnnotation.fqName?.asString() == allowedClassWithAnnotationConfig) {
-                    val mutatePsiElement = functionDescriptorPsiElement.determineClassSelfMutateByPsiElement(bindingContext)
+                    val mutatePsiElement =
+                      functionDescriptorPsiElement.determineClassSelfMutateByPsiElement(bindingContext)
 
                     if (mutatePsiElement != null) {
                       return FilterConfig.PassResult.Passed(
@@ -238,8 +241,22 @@ fun FilterConfig.tryPerformPass(
         }
       }
 
+      if (classAndMethodWithoutAnnotations == true) {
+        val containingDescriptor = functionDescriptor.containingDeclaration
+        if (functionDescriptor.annotations.isEmpty()) {
+          if (containingDescriptor is ClassDescriptor && containingDescriptor.kind == ClassKind.CLASS) {
+            if (containingDescriptor.annotations.isEmpty()) {
+              return FilterConfig.PassResult.Passed(
+                onPsiElement = functionDescriptor.psiElement
+              )
+            }
+          }
+        }
+      }
+
       return FilterConfig.PassResult.NotPassed
     }
+
     is KtProperty -> {
       val property = on
 
@@ -283,6 +300,7 @@ fun FilterConfig.tryPerformPass(
 
       return FilterConfig.PassResult.NotPassed
     }
+
     is KtCallExpression -> {
       val expression = on
 
