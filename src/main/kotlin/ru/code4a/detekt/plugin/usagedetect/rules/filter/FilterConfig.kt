@@ -32,7 +32,8 @@ data class FilterConfig(
   val classesWithAnnotations: List<String> = emptyList(),
   val classesMutateInvokesWithAnnotations: List<String> = emptyList(),
   val topLevelFunction: Boolean? = null,
-  val classObjectFunction: Boolean? = null
+  val classObjectFunction: Boolean? = null,
+  val classWithoutAnnotations: Boolean? = null
 ) {
   sealed interface PassResult {
     class Passed(
@@ -70,7 +71,8 @@ fun FilterConfig.merge(second: FilterConfig): FilterConfig =
     classesWithAnnotations = this.classesWithAnnotations + second.classesWithAnnotations,
     classesMutateInvokesWithAnnotations = this.classesMutateInvokesWithAnnotations + second.classesMutateInvokesWithAnnotations,
     topLevelFunction = this.topLevelFunction == true || second.topLevelFunction == true,
-    classObjectFunction = this.classObjectFunction == true || second.classObjectFunction == true
+    classObjectFunction = this.classObjectFunction == true || second.classObjectFunction == true,
+    classWithoutAnnotations = this.classWithoutAnnotations == true || second.classWithoutAnnotations == true
   )
 
 fun tryMergeConfigs(
@@ -222,6 +224,17 @@ fun FilterConfig.tryPerformPass(
           return FilterConfig.PassResult.Passed(
             onPsiElement = functionDescriptor.psiElement
           )
+        }
+      }
+
+      if (classWithoutAnnotations == true) {
+        val containingDescriptor = functionDescriptor.containingDeclaration
+        if (containingDescriptor is ClassDescriptor && containingDescriptor.kind == ClassKind.CLASS) {
+          if (containingDescriptor.annotations.isEmpty()) {
+            return FilterConfig.PassResult.Passed(
+              onPsiElement = functionDescriptor.psiElement
+            )
+          }
         }
       }
 
