@@ -377,4 +377,68 @@ class TestClass {
 
     Assertions.assertTrue(finding.isEmpty())
   }
+
+  @Test
+  fun `should pass with lambda`() {
+    @Language("yaml")
+    val configYaml =
+      """
+rootRules:
+  - message: Detected usage NotAllowed without AllowedScope
+    visitFilter:
+      rootsOnly:
+        isNot:
+          methodsWithAnnotations:
+            - test.AllowedScope
+    notAllowedInvokes:
+      methodsWithAnnotations:
+        - test.NotAllowed
+      """.trimIndent()
+
+    @Language("kotlin")
+    val fileContents =
+      listOf(
+        """
+package test
+
+annotation class NotAllowed
+
+annotation class AllowedScope
+        """.trimIndent(),
+        """
+package test
+
+@NotAllowed
+fun a() {
+}
+        """.trimIndent(),
+        """
+package transaprent
+
+import test.a
+import test.AllowedScope
+
+class TestClass {
+
+  @AllowedScope
+  fun test() {
+    val b = {
+      a()
+    }
+  }
+
+}
+        """.trimIndent()
+      )
+
+    val finding =
+      ValidateAllowDeepInvokesDetektRule(
+        TestConfig(
+          Pair("configYaml", configYaml),
+          Pair("active", "true")
+        )
+      ).lintAllWithContextAndPrint(env, fileContents)
+
+    Assertions.assertTrue(finding.isEmpty())
+  }
 }
