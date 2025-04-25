@@ -74,10 +74,16 @@ class ValidateAllowDeepInvokesDetektRule(
 
     val filteredRules =
       ruleConfig.rootRules.filter { rootRule ->
-        rootRule.visitFilter.performPassRoot(lambdaExpression, bindingContext) is FilterConfig.PassResult.Passed
+        (
+          rootRule.visitFilter.rootsOnly?.`is`?.lambdaInClassWithAnnotations?.isNotEmpty() == true ||
+            rootRule.visitFilter.rootsAndNested?.`is`?.lambdaInClassWithAnnotations?.isNotEmpty() == true
+          ) &&
+          rootRule.visitFilter.performPassRoot(lambdaExpression, bindingContext) is FilterConfig.PassResult.Passed
       }
 
-    callChain(lambdaExpression, filteredRules, currentCallStack = listOf(lambdaExpression.psiOrParent))
+    if (filteredRules.isNotEmpty()) {
+      callChain(lambdaExpression, filteredRules, currentCallStack = listOf(lambdaExpression.psiOrParent))
+    }
   }
 
   override fun visitProperty(property: KtProperty) {

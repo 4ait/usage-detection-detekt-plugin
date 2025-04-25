@@ -304,20 +304,6 @@ fun FilterConfig.tryPerformPass(
         }
       }
 
-      val containingFunction = ktLambdaExpression.getContainingFunctionOrMethod()
-
-      if (containingFunction != null) {
-        val functionDescriptor = containingFunction.getResolvedFunctionDescriptor(bindingContext)
-
-        if (functionDescriptor != null) {
-          val passResult = tryPerformPass(functionDescriptor, bindingContext)
-
-          if (passResult is FilterConfig.PassResult.Passed) {
-            return passResult
-          }
-        }
-      }
-
       return FilterConfig.PassResult.NotPassed
     }
 
