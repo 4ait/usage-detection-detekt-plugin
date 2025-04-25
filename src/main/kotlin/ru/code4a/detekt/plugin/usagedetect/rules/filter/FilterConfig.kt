@@ -3,24 +3,34 @@ package ru.code4a.detekt.plugin.usagedetect.rules.filter
 import kotlinx.serialization.Serializable
 import org.jetbrains.kotlin.backend.jvm.ir.psiElement
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.coroutines.isSuspendLambda
 import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.ConstructorDescriptor
 import org.jetbrains.kotlin.descriptors.FunctionDescriptor
 import org.jetbrains.kotlin.descriptors.containingPackage
+import org.jetbrains.kotlin.descriptors.impl.AnonymousFunctionDescriptor
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.psi.KtBinaryExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtLambdaExpression
 import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.psiUtil.containingClass
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
 import org.jetbrains.kotlin.resolve.BindingContext
+import org.jetbrains.kotlin.resolve.calls.util.getResolvedCall
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import ru.code4a.detekt.plugin.usagedetect.extentions.isPartOfPackageName
 import ru.code4a.detekt.plugin.usagedetect.extentions.psi.determineClassSelfMutateByPsiElement
 import ru.code4a.detekt.plugin.usagedetect.extentions.psi.getAnnotationsOutsideCompanion
 import ru.code4a.detekt.plugin.usagedetect.extentions.psi.getClassNameOutsideCompanion
+import ru.code4a.detekt.plugin.usagedetect.extentions.psi.getContainingClassDescriptor
 import ru.code4a.detekt.plugin.usagedetect.extentions.psi.getContainingClassDescriptorOutsideCompanion
 import ru.code4a.detekt.plugin.usagedetect.extentions.psi.getContainingFunctionDescriptor
+import ru.code4a.detekt.plugin.usagedetect.extentions.psi.isMutationOfClass
 import ru.code4a.detekt.plugin.usagedetect.extentions.psi.isTopLevelFunction
+import java.util.logging.Filter
 
 @Serializable
 data class FilterConfig(
@@ -31,6 +41,8 @@ data class FilterConfig(
   val methodsWithParametrizedAnnotations: List<MethodWithParamAnnotationConfig> = emptyList(),
   val classesWithAnnotations: List<String> = emptyList(),
   val classesMutateInvokesWithAnnotations: List<String> = emptyList(),
+  val lambdaInClassWithAnnotations: List<String> = emptyList(),
+  val creationObjectWithAnnotations: List<String> = emptyList(),
   val topLevelFunction: Boolean? = null,
   val classObjectFunction: Boolean? = null,
   val classWithoutAnnotations: Boolean? = null,
@@ -257,6 +269,76 @@ fun FilterConfig.tryPerformPass(
       return FilterConfig.PassResult.NotPassed
     }
 
+    is KtLambdaExpression -> {
+      val ktLambdaExpression = on
+
+      isPassedPsiElement(ktLambdaExpression).let {
+        if (it is FilterConfig.PassResult.Passed) {
+          return it
+        }
+      }
+
+      if (lambdaInClassWithAnnotations.isNotEmpty()) {
+        val functionDescriptorPsiElement = ktLambdaExpression.psi
+
+        if (functionDescriptorPsiElement != null) {
+          val containingClassDescriptor =
+            ktLambdaExpression.getContainingClassDescriptorOutsideCompanion(bindingContext)
+          if (containingClassDescriptor != null) {
+            val classAnnotations = containingClassDescriptor.getAnnotationsOutsideCompanion()
+
+            if (classAnnotations != null) {
+              for (containingClassAnnotation in classAnnotations) {
+                for (allowedClassWithAnnotationConfig in lambdaInClassWithAnnotations) {
+                  if (containingClassAnnotation.fqName?.asString() == allowedClassWithAnnotationConfig) {
+                    return FilterConfig.PassResult.Passed(
+                      onPsiElement = ktLambdaExpression.psi
+                    )
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      return FilterConfig.PassResult.NotPassed
+    }
+
+    is KtBinaryExpression -> {
+      val ktBinaryExpression = on
+
+      isPassedPsiElement(ktBinaryExpression).let {
+        if (it is FilterConfig.PassResult.Passed) {
+          return it
+        }
+      }
+
+      if (classesMutateInvokesWithAnnotations.isNotEmpty()) {
+        val classDescriptor = ktBinaryExpression.getContainingClassDescriptorOutsideCompanion(bindingContext)
+
+        if (classDescriptor != null) {
+          val classAnnotations = classDescriptor.annotations
+
+          if (classAnnotations != null) {
+            for (containingClassAnnotation in classAnnotations) {
+              for (allowedClassWithAnnotationConfig in classesMutateInvokesWithAnnotations) {
+                if (containingClassAnnotation.fqName?.asString() == allowedClassWithAnnotationConfig) {
+                  if (ktBinaryExpression.isMutationOfClass(bindingContext, classDescriptor)) {
+                    return FilterConfig.PassResult.Passed(
+                      onPsiElement = ktBinaryExpression
+                    )
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      return FilterConfig.PassResult.NotPassed
+    }
+
     is KtProperty -> {
       val property = on
 
@@ -271,13 +353,9 @@ fun FilterConfig.tryPerformPass(
           null
         }
 
-      if (packages.isNotEmpty()) {
-        val containingPackageName = property.containingKtFile.packageFqName.asString()
-
-        if (packages.firstOrNull { allowedPackageName -> allowedPackageName.isPartOfPackageName(containingPackageName) } != null) {
-          return FilterConfig.PassResult.Passed(
-            onPsiElement = property
-          )
+      isPassedPsiElement(expression ?: property).let {
+        if (it is FilterConfig.PassResult.Passed) {
+          return it
         }
       }
 
@@ -304,16 +382,9 @@ fun FilterConfig.tryPerformPass(
     is KtCallExpression -> {
       val expression = on
 
-      if (packages.isNotEmpty()) {
-        val ktFile = expression.getParentOfType<KtFile>(true)
-        val containingPackageName = ktFile?.packageFqName?.asString()
-
-        if (containingPackageName != null &&
-          packages.firstOrNull { allowedPackageName -> containingPackageName.startsWith(allowedPackageName) } != null
-        ) {
-          return FilterConfig.PassResult.Passed(
-            onPsiElement = expression
-          )
+      isPassedPsiElement(expression).let {
+        if (it is FilterConfig.PassResult.Passed) {
+          return it
         }
       }
 
@@ -361,6 +432,27 @@ fun FilterConfig.tryPerformPass(
         }
       }
 
+      if (creationObjectWithAnnotations.isNotEmpty()) {
+        val resolvedCall = expression.getResolvedCall(bindingContext)
+
+        if (resolvedCall?.candidateDescriptor is ConstructorDescriptor) {
+          val containingClass = expression.getContainingClassDescriptorOutsideCompanion(bindingContext)
+          val classAnnotations = containingClass?.annotations
+
+          if (classAnnotations != null) {
+            for (containingClassAnnotation in classAnnotations) {
+              for (allowedClassWithAnnotationConfig in creationObjectWithAnnotations) {
+                if (containingClassAnnotation.fqName?.asString() == allowedClassWithAnnotationConfig) {
+                  return FilterConfig.PassResult.Passed(
+                    onPsiElement = expression
+                  )
+                }
+              }
+            }
+          }
+        }
+      }
+
       if (classesWithAnnotations.isNotEmpty()) {
         val containingClass = expression.getContainingClassDescriptorOutsideCompanion(bindingContext)
         val classAnnotations = containingClass?.annotations
@@ -385,6 +477,23 @@ fun FilterConfig.tryPerformPass(
   throw IllegalStateException("On type is not supported: ${on::class}")
 }
 
+private fun FilterConfig.isPassedPsiElement(psiElement: PsiElement): FilterConfig.PassResult {
+  if (packages.isNotEmpty()) {
+    val ktFile = psiElement.getParentOfType<KtFile>(true)
+    val containingPackageName = ktFile?.packageFqName?.asString()
+
+    if (containingPackageName != null &&
+      packages.firstOrNull { allowedPackageName -> containingPackageName.startsWith(allowedPackageName) } != null
+    ) {
+      return FilterConfig.PassResult.Passed(
+        onPsiElement = psiElement
+      )
+    }
+  }
+
+  return FilterConfig.PassResult.NotPassed
+}
+
 fun FilterConfig.performPass(
   functionDescriptor: FunctionDescriptor,
   bindingContext: BindingContext
@@ -397,5 +506,10 @@ fun FilterConfig.performPass(
 
 fun FilterConfig.performPass(
   expression: KtCallExpression,
+  bindingContext: BindingContext
+): FilterConfig.PassResult = tryPerformPass(expression, bindingContext)
+
+fun FilterConfig.performPass(
+  expression: KtBinaryExpression,
   bindingContext: BindingContext
 ): FilterConfig.PassResult = tryPerformPass(expression, bindingContext)

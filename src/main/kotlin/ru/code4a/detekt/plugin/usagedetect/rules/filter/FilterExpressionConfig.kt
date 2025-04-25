@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import org.jetbrains.kotlin.backend.jvm.ir.psiElement
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.descriptors.FunctionDescriptor
+import org.jetbrains.kotlin.psi.KtLambdaExpression
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.resolve.BindingContext
 
@@ -33,6 +34,7 @@ private fun Any.tryGetPsiElement(): PsiElement? =
   when (this) {
     is KtProperty -> this
     is FunctionDescriptor -> this.psiElement
+    is KtLambdaExpression -> this
     else -> throw IllegalArgumentException("$this is not a KtProperty or FunctionDescriptor")
   }
 
@@ -73,3 +75,8 @@ fun FilterExpressionConfig.performPass(
   functionDescriptor: FunctionDescriptor,
   bindingContext: BindingContext
 ): FilterConfig.PassResult = tryPerformPass(functionDescriptor, bindingContext)
+
+fun FilterExpressionConfig.performPass(
+  ktLambdaExpression: KtLambdaExpression,
+  bindingContext: BindingContext
+): FilterConfig.PassResult = tryPerformPass(ktLambdaExpression, bindingContext)

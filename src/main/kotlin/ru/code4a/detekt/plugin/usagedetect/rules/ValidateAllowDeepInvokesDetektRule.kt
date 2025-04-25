@@ -15,7 +15,9 @@ import org.jetbrains.kotlin.backend.jvm.ir.psiElement
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.descriptors.FunctionDescriptor
 import org.jetbrains.kotlin.descriptors.PropertyDescriptor
+import org.jetbrains.kotlin.psi.KtBinaryExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtLambdaExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtReferenceExpression
@@ -67,6 +69,17 @@ class ValidateAllowDeepInvokesDetektRule(
     }
   }
 
+  override fun visitLambdaExpression(lambdaExpression: KtLambdaExpression) {
+    super.visitLambdaExpression(lambdaExpression)
+
+    val filteredRules =
+      ruleConfig.rootRules.filter { rootRule ->
+        rootRule.visitFilter.performPassRoot(lambdaExpression, bindingContext) is FilterConfig.PassResult.Passed
+      }
+
+    callChain(lambdaExpression, filteredRules, currentCallStack = listOf(lambdaExpression.psiOrParent))
+  }
+
   override fun visitProperty(property: KtProperty) {
     super.visitProperty(property)
 
@@ -108,6 +121,16 @@ class ValidateAllowDeepInvokesDetektRule(
 
     psiElement.accept(
       object : KtTreeVisitorVoid() {
+        override fun visitBinaryExpression(expression: KtBinaryExpression) {
+          super.visitBinaryExpression(expression)
+
+          validateBinaryExpression(
+            ktBinaryExpression = expression,
+            rules = rules,
+            newCallStack = currentCallStack + expression
+          )
+        }
+
         override fun visitReferenceExpression(expression: KtReferenceExpression) {
           super.visitReferenceExpression(expression)
 
@@ -136,26 +159,144 @@ class ValidateAllowDeepInvokesDetektRule(
         override fun visitCallExpression(expression: KtCallExpression) {
           super.visitCallExpression(expression)
           val resolvedCall = expression.getResolvedCall(bindingContext) ?: return
-          val functionDescriptor = resolvedCall.resultingDescriptor as? FunctionDescriptor ?: return
+          val functionDescriptor = resolvedCall.resultingDescriptor as? FunctionDescriptor
 
-          validateFunctionDescription(
-            functionDescriptor = functionDescriptor,
-            rules = rules,
-            newCallStack = currentCallStack + expression
-          )
-
-          val implementedFunctions = functionDescriptor.getImplementedFunctions(bindingContext)
-
-          implementedFunctions?.forEach { implementedFunctionDescriptor ->
+          if (functionDescriptor != null) {
             validateFunctionDescription(
-              functionDescriptor = implementedFunctionDescriptor,
+              functionDescriptor = functionDescriptor,
               rules = rules,
               newCallStack = currentCallStack + expression
             )
+
+            val implementedFunctions = functionDescriptor.getImplementedFunctions(bindingContext)
+
+            implementedFunctions?.forEach { implementedFunctionDescriptor ->
+              validateFunctionDescription(
+                functionDescriptor = implementedFunctionDescriptor,
+                rules = rules,
+                newCallStack = currentCallStack + expression
+              )
+            }
           }
+
+          validateCallExpression(
+            ktCallExpression = expression,
+            rules = rules,
+            newCallStack = currentCallStack + expression
+          )
         }
       }
     )
+  }
+
+  private fun validateBinaryExpression(
+    ktBinaryExpression: KtBinaryExpression,
+    rules: List<RootRule>,
+    newCallStack: List<PsiElement>
+  ) {
+
+    rules.forEach { methodConfig ->
+      val allowedPassResult = methodConfig.allowedInvokes?.performPass(ktBinaryExpression, bindingContext)
+
+      val (isReport, debugCallStack) =
+        if (allowedPassResult != null) {
+          if (allowedPassResult is FilterConfig.PassResult.NotPassed) {
+            val debugCallStack =
+              newCallStack + ktBinaryExpression
+
+            Pair(true, debugCallStack)
+          } else {
+            Pair(false, listOf())
+          }
+        } else {
+          val notAllowedPassResult = methodConfig.notAllowedInvokes?.performPass(ktBinaryExpression, bindingContext)
+
+          if (notAllowedPassResult != null) {
+            if (notAllowedPassResult is FilterConfig.PassResult.Passed) {
+              val debugCallStack =
+                newCallStack + ktBinaryExpression
+
+              Pair(true, debugCallStack)
+            } else {
+              Pair(false, listOf())
+            }
+          } else {
+            Pair(false, listOf())
+          }
+        }
+
+      if (isReport) {
+        report(
+          CodeSmell(
+            issue,
+            Entity.from(debugCallStack.first()),
+            message = "${methodConfig.message}.\n\tCall Stack:\n\t\t${
+              debugCallStack.drop(1).map {
+                Entity.from(
+                  it
+                )
+              }.joinToString(" ---> \n\t\t") { it.compact() }
+            }\n",
+            references = newCallStack.map { Entity.from(it) }
+          )
+        )
+      }
+    }
+  }
+
+  private fun validateCallExpression(
+    ktCallExpression: KtCallExpression,
+    rules: List<RootRule>,
+    newCallStack: List<PsiElement>
+  ) {
+
+    rules.forEach { methodConfig ->
+      val allowedPassResult = methodConfig.allowedInvokes?.performPass(ktCallExpression, bindingContext)
+
+      val (isReport, debugCallStack) =
+        if (allowedPassResult != null) {
+          if (allowedPassResult is FilterConfig.PassResult.NotPassed) {
+            val debugCallStack =
+              newCallStack + ktCallExpression
+
+            Pair(true, debugCallStack)
+          } else {
+            Pair(false, listOf())
+          }
+        } else {
+          val notAllowedPassResult = methodConfig.notAllowedInvokes?.performPass(ktCallExpression, bindingContext)
+
+          if (notAllowedPassResult != null) {
+            if (notAllowedPassResult is FilterConfig.PassResult.Passed) {
+              val debugCallStack =
+                newCallStack + ktCallExpression
+
+              Pair(true, debugCallStack)
+            } else {
+              Pair(false, listOf())
+            }
+          } else {
+            Pair(false, listOf())
+          }
+        }
+
+      if (isReport) {
+        report(
+          CodeSmell(
+            issue,
+            Entity.from(debugCallStack.first()),
+            message = "${methodConfig.message}.\n\tCall Stack:\n\t\t${
+              debugCallStack.drop(1).map {
+                Entity.from(
+                  it
+                )
+              }.joinToString(" ---> \n\t\t") { it.compact() }
+            }\n",
+            references = newCallStack.map { Entity.from(it) }
+          )
+        )
+      }
+    }
   }
 
   private fun validateFunctionDescription(
@@ -268,6 +409,25 @@ class ValidateAllowDeepInvokesDetektRule(
       }
 
       return tryMergeConfigs(nestedOnly, rootsAndNested)?.performPass(functionDescriptor, bindingContext)
+        ?: FilterConfig.PassResult.NotPassed
+    }
+
+    fun performPassRoot(
+      ktLambdaExpression: KtLambdaExpression,
+      bindingContext: BindingContext
+    ): FilterConfig.PassResult =
+      tryMergeConfigs(rootsOnly, rootsAndNested)?.performPass(ktLambdaExpression, bindingContext)
+        ?: FilterConfig.PassResult.NotPassed
+
+    fun performPassNested(
+      ktLambdaExpression: KtLambdaExpression,
+      bindingContext: BindingContext
+    ): FilterConfig.PassResult {
+      if (rootsAndNested == null && nestedOnly == null) {
+        return FilterConfig.PassResult.Passed(onPsiElement = ktLambdaExpression.psi)
+      }
+
+      return tryMergeConfigs(nestedOnly, rootsAndNested)?.performPass(ktLambdaExpression, bindingContext)
         ?: FilterConfig.PassResult.NotPassed
     }
 
