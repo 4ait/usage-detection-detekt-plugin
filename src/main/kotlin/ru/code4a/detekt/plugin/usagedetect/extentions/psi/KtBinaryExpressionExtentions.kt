@@ -29,7 +29,10 @@ fun KtBinaryExpression.isMutationOfThis(bindingContext: BindingContext): Boolean
   return false
 }
 
-fun KtBinaryExpression.isLeftOfClassType(bindingContext: BindingContext, classDescriptor: ClassDescriptor): Boolean {
+fun KtBinaryExpression.isLeftReceiverOfClassType(
+  bindingContext: BindingContext,
+  classDescriptor: ClassDescriptor
+): Boolean {
   val left = left ?: return false
 
   if (left is KtDotQualifiedExpression) {
@@ -79,5 +82,5 @@ fun KtBinaryExpression.isMutationOfClass(bindingContext: BindingContext, classDe
     KtTokens.MULTEQ,
     KtTokens.DIVEQ
   ) &&
-    isLeftOfClassType(bindingContext, classDescriptor)
+    isLeftReceiverOfClassType(bindingContext, classDescriptor)
 }
