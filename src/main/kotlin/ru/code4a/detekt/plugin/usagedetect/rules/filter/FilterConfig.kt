@@ -439,18 +439,18 @@ fun FilterConfig.tryPerformPass(
       if (creationObjectWithAnnotations.isNotEmpty()) {
         val resolvedCall = expression.getResolvedCall(bindingContext)
 
-        if (resolvedCall?.candidateDescriptor is ConstructorDescriptor) {
-          val containingClass = expression.getContainingClassDescriptorOutsideCompanion(bindingContext)
-          val classAnnotations = containingClass?.annotations
+        val constructorDescriptor = resolvedCall?.candidateDescriptor
 
-          if (classAnnotations != null) {
-            for (containingClassAnnotation in classAnnotations) {
-              for (allowedClassWithAnnotationConfig in creationObjectWithAnnotations) {
-                if (containingClassAnnotation.fqName?.asString() == allowedClassWithAnnotationConfig) {
-                  return FilterConfig.PassResult.Passed(
-                    onPsiElement = expression
-                  )
-                }
+        if (constructorDescriptor is ConstructorDescriptor) {
+          val constructedClass = constructorDescriptor.constructedClass
+          val classAnnotations = constructedClass.annotations
+
+          for (containingClassAnnotation in classAnnotations) {
+            for (allowedClassWithAnnotationConfig in creationObjectWithAnnotations) {
+              if (containingClassAnnotation.fqName?.asString() == allowedClassWithAnnotationConfig) {
+                return FilterConfig.PassResult.Passed(
+                  onPsiElement = expression
+                )
               }
             }
           }

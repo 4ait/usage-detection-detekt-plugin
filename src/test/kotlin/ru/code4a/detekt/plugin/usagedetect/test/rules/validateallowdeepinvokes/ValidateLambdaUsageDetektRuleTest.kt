@@ -510,4 +510,63 @@ package test
 
     Assertions.assertEquals(2, finding.size)
   }
+
+  @Test
+  fun `should pass without error`() {
+    @Language("kotlin")
+    val fileContents =
+      listOf(
+        """
+package test
+
+annotation class Entity
+        """.trimIndent(),
+        """
+package test
+
+            inline fun <T> T?.unwrapElseThrow(exceptionGetter: () -> Throwable): T {
+              if (this == null) {
+                throw exceptionGetter()
+              }
+
+              return this
+            }
+
+
+            @Entity
+            class Employee {
+                class AA {}
+
+                var id: Long = 0
+
+                var name: String = ""
+
+                var department: Department? = null
+
+                fun getDepartment() = department.unwrapElseThrow {
+                    val a = AA()
+
+                    RuntimeException("Object is not initialized")
+                }
+            }
+
+            @Entity
+            class Department {
+                var id: Long = 0
+
+                var name: String = ""
+            }
+        """.trimIndent()
+      )
+
+    val finding =
+      ValidateAllowDeepInvokesDetektRule(
+        TestConfig(
+          Pair("configYaml", configYaml),
+          Pair("active", "true")
+        )
+      ).lintAllWithContextAndPrint(env, fileContents)
+
+    Assertions.assertEquals(0, finding.size)
+  }
 }
