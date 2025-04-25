@@ -88,7 +88,9 @@ fun FilterConfig.merge(second: FilterConfig): FilterConfig =
     topLevelFunction = this.topLevelFunction == true || second.topLevelFunction == true,
     classObjectFunction = this.classObjectFunction == true || second.classObjectFunction == true,
     classWithoutAnnotations = this.classWithoutAnnotations == true || second.classWithoutAnnotations == true,
-    classAndMethodWithoutAnnotations = this.classAndMethodWithoutAnnotations == true || second.classAndMethodWithoutAnnotations == true
+    classAndMethodWithoutAnnotations = this.classAndMethodWithoutAnnotations == true || second.classAndMethodWithoutAnnotations == true,
+    lambdaInClassWithAnnotations = this.lambdaInClassWithAnnotations + second.lambdaInClassWithAnnotations,
+    creationObjectWithAnnotations = this.creationObjectWithAnnotations + second.creationObjectWithAnnotations,
   )
 
 fun tryMergeConfigs(
