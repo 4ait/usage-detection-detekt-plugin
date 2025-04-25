@@ -28,6 +28,8 @@ import ru.code4a.detekt.plugin.usagedetect.extentions.psi.getClassNameOutsideCom
 import ru.code4a.detekt.plugin.usagedetect.extentions.psi.getContainingClassDescriptor
 import ru.code4a.detekt.plugin.usagedetect.extentions.psi.getContainingClassDescriptorOutsideCompanion
 import ru.code4a.detekt.plugin.usagedetect.extentions.psi.getContainingFunctionDescriptor
+import ru.code4a.detekt.plugin.usagedetect.extentions.psi.getContainingFunctionOrMethod
+import ru.code4a.detekt.plugin.usagedetect.extentions.psi.getResolvedFunctionDescriptor
 import ru.code4a.detekt.plugin.usagedetect.extentions.psi.isMutationOfClass
 import ru.code4a.detekt.plugin.usagedetect.extentions.psi.isTopLevelFunction
 import java.util.logging.Filter
@@ -298,6 +300,20 @@ fun FilterConfig.tryPerformPass(
                 }
               }
             }
+          }
+        }
+      }
+
+      val containingFunction = ktLambdaExpression.getContainingFunctionOrMethod()
+
+      if (containingFunction != null) {
+        val functionDescriptor = containingFunction.getResolvedFunctionDescriptor(bindingContext)
+
+        if (functionDescriptor != null) {
+          val passResult = tryPerformPass(functionDescriptor, bindingContext)
+
+          if (passResult is FilterConfig.PassResult.Passed) {
+            return passResult
           }
         }
       }
