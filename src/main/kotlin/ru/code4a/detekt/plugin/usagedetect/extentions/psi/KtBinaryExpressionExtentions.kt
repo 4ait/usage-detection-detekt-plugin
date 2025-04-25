@@ -32,13 +32,15 @@ fun KtBinaryExpression.isMutationOfThis(bindingContext: BindingContext): Boolean
 fun KtBinaryExpression.isLeftOfClassType(bindingContext: BindingContext, classDescriptor: ClassDescriptor): Boolean {
   val left = left ?: return false
 
-  if (left is KtThisExpression) {
-    val thisType = bindingContext[BindingContext.EXPRESSION_TYPE_INFO, left]?.type
-    val thisClassDescriptor = thisType?.constructor?.declarationDescriptor as? ClassDescriptor
-    return thisClassDescriptor == classDescriptor
-  }
-
   if (left is KtDotQualifiedExpression) {
+    val isSkip =
+      (left.selectorExpression as? KtNameReferenceExpression)
+        ?.hasAnyAnnotation(listOf("jakarta.persistence.Transient"), bindingContext) ?: false // TODO(configuration)
+
+    if (isSkip) {
+      return false
+    }
+
     val receiver = left.receiverExpression
 
     if (receiver is KtThisExpression) {
@@ -55,6 +57,12 @@ fun KtBinaryExpression.isLeftOfClassType(bindingContext: BindingContext, classDe
   }
 
   if (left is KtNameReferenceExpression) {
+    val isSkip = left.hasAnyAnnotation(listOf("jakarta.persistence.Transient"), bindingContext) // TODO(configuration)
+
+    if (isSkip) {
+      return false
+    }
+
     val resolvedCall = left.getResolvedCall(bindingContext)
     val containingClass = resolvedCall?.candidateDescriptor?.containingDeclaration as? ClassDescriptor
     return containingClass == classDescriptor
